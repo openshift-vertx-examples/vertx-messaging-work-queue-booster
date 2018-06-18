@@ -40,6 +40,8 @@ public class Frontend {
         try {
             String host = System.getenv("MESSAGING_SERVICE_HOST");
             String portString = System.getenv("MESSAGING_SERVICE_PORT");
+            String user = System.getenv("MESSAGING_SERVICE_USER");
+            String password = System.getenv("MESSAGING_SERVICE_PASSWORD");
 
             if (host == null) {
                 host = "localhost";
@@ -49,28 +51,36 @@ public class Frontend {
                 portString = "5672";
             }
 
+            if (user == null) {
+                user = "work-queue";
+            }
+
+            if (password == null) {
+                password = "work-queue";
+            }
+
             int port = Integer.parseInt(portString);
 
             Vertx vertx = Vertx.vertx();
             ProtonClient client = ProtonClient.create(vertx);
 
-            // client.connect(host, port, (res) -> {
-            //         if (res.failed()) {
-            //             res.cause().printStackTrace();
-            //             return;
-            //         }
+            client.connect(host, port, user, password, (res) -> {
+                    if (res.failed()) {
+                        res.cause().printStackTrace();
+                        return;
+                    }
 
-            //         ProtonConnection conn = res.result();
-            //         conn.setContainer(id);
-            //         conn.open();
+                    ProtonConnection conn = res.result();
+                    conn.setContainer(id);
+                    conn.open();
 
-            //         handleRequests(vertx, conn);
-            //         sendStatusUpdates(vertx, conn);
-            //     });
+                    // handleRequests(vertx, conn);
+                    // sendStatusUpdates(vertx, conn);
+                });
 
-            // while (true) {
-            //     Thread.sleep(60 * 1000);
-            // }
+            while (true) {
+                Thread.sleep(60 * 1000);
+            }
         } catch (Exception e) {
             e.printStackTrace();
             System.exit(1);

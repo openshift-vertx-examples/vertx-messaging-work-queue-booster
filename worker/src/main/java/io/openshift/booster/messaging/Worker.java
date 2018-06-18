@@ -40,6 +40,8 @@ public class Worker {
         try {
             String host = System.getenv("MESSAGING_SERVICE_HOST");
             String portString = System.getenv("MESSAGING_SERVICE_PORT");
+            String user = System.getenv("MESSAGING_SERVICE_USER");
+            String password = System.getenv("MESSAGING_SERVICE_PASSWORD");
 
             if (host == null) {
                 host = "localhost";
@@ -49,12 +51,20 @@ public class Worker {
                 portString = "5672";
             }
 
+            if (user == null) {
+                user = "work-queue";
+            }
+
+            if (password == null) {
+                password = "work-queue";
+            }
+
             int port = Integer.parseInt(portString);
 
             Vertx vertx = Vertx.vertx();
             ProtonClient client = ProtonClient.create(vertx);
 
-            client.connect(host, port, (res) -> {
+            client.connect(host, port, user, password, (res) -> {
                     if (res.failed()) {
                         res.cause().printStackTrace();
                         return;
@@ -120,7 +130,7 @@ public class Worker {
     }
 
     private static void sendStatusUpdates(Vertx vertx, ProtonConnection conn) {
-        ProtonSender sender = conn.createSender("upstate/worker-status");
+        ProtonSender sender = conn.createSender("work-queue/worker-updates");
 
         vertx.setPeriodic(5 * 1000, (timer) -> {
                 if (conn.isDisconnected()) {
@@ -135,9 +145,9 @@ public class Worker {
                 System.out.println("WORKER: Sending status update");
 
                 Map<String, Object> props = new HashMap<String, Object>();
-                props.put("worker_id", conn.getContainer());
+                props.put("workerId", conn.getContainer());
                 props.put("timestamp", System.currentTimeMillis());
-                props.put("requests_processed", requestsProcessed.get());
+                props.put("requestsProcessed", requestsProcessed.get());
 
                 Message status = Message.Factory.create();
                 status.setApplicationProperties(new ApplicationProperties(props));
