@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <title>Work Queue</title>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,300italic,400,400italic,600,600italic|Ubuntu+Mono:400" rel="stylesheet" type="text/css"/>
+    <link rel="stylesheet" href="/app.css" type="text/css"/>
+    <link rel="icon" href="" type="image/png"/>
+    <script type="text/javascript" src="/gesso.js"></script>
+    <script type="text/javascript" src="/app.js"></script>
+    <script>
+      "use strict";
+      app.init();
+    </script>
+  </head>
+  <body>
+    <div id="-body">
+      <div id="-body-content">
+        <h1>Work Queue</h1>
+
+        <h2>Requests</h2>
+
+        <form id="request-form" method="post" action="javascript:app.sendRequest()">
+          <input name="text" autofocus="autofocus"/>
+        </form>
+
+        <h2>Responses</h2>
+
+        <div id="responses"></div>
+
+        <h2>Workers</h2>
+
+        <div id="workers"></div>
+      </div>
+    </div>
+  </body>
+</html>

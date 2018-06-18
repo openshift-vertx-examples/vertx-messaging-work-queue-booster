@@ -88,7 +88,7 @@ public class Worker {
     }
 
     private static void handleRequests(Vertx vertx, ProtonConnection conn) {
-        ProtonReceiver receiver = conn.createReceiver("upstate/requests");
+        ProtonReceiver receiver = conn.createReceiver("work-queue/requests");
         ProtonSender sender = conn.createSender(null);
 
         receiver.handler((delivery, request) -> {
@@ -100,7 +100,7 @@ public class Worker {
                 try {
                     responseBody = processRequest(request);
                 } catch (Exception e) {
-                    System.err.println("WORKER: Failed processing message: " + e);
+                    System.err.println("WORKER: Failed processing request: " + e);
                     return;
                 }
 
