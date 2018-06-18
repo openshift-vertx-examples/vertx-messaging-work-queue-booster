@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package io.openshfit.booster.messaging;
+package io.openshift.booster.messaging;
 
 import io.vertx.core.Vertx;
 import io.vertx.proton.ProtonClient;
@@ -83,20 +83,20 @@ public class Worker {
 
         receiver.handler((delivery, request) -> {
                 String requestBody = (String) ((AmqpValue) request.getBody()).getValue();
-                System.out.println("WORKER-VERTX: Received request '" + requestBody + "'");
+                System.out.println("WORKER: Received request '" + requestBody + "'");
 
                 String responseBody;
 
                 try {
                     responseBody = processRequest(request);
                 } catch (Exception e) {
-                    System.err.println("WORKER-VERTX: Failed processing message: " + e);
+                    System.err.println("WORKER: Failed processing message: " + e);
                     return;
                 }
 
-                System.out.println("WORKER-VERTX: Sending response '" + responseBody + "'");
+                System.out.println("WORKER: Sending response '" + responseBody + "'");
 
-                Map<String, String> props = new HashMap<String, String>();
+                Map<String, Object> props = new HashMap<String, Object>();
                 props.put("worker_id", conn.getContainer());
 
                 Message response = Message.Factory.create();
@@ -132,7 +132,7 @@ public class Worker {
                     return;
                 }
 
-                System.out.println("WORKER-VERTX: Sending status update");
+                System.out.println("WORKER: Sending status update");
 
                 Map<String, Object> props = new HashMap<String, Object>();
                 props.put("worker_id", conn.getContainer());

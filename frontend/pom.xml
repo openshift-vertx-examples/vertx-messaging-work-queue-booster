@@ -23,14 +23,14 @@
     <artifactId>vertx-messaging-work-queue-parent</artifactId>
     <version>1-SNAPSHOT</version>
   </parent>
-
-  <artifactId>vertx-messaging-work-queue-worker</artifactId>
+  
+  <artifactId>vertx-messaging-work-queue-frontend</artifactId>
   <packaging>jar</packaging>
-
-  <name>Vert.x - Messaging - Work Queue Booster - Worker</name>
+  
+  <name>Vert.x - Messaging - Work Queue Booster - Frontend</name>
 
   <properties>
-    <vertx.launcher>io.openshift.booster.messaging.Worker</vertx.launcher>
+    <vertx.launcher>io.openshift.booster.messaging.Frontend</vertx.launcher>
     <vertx.health>/health</vertx.health>
   </properties>
 
