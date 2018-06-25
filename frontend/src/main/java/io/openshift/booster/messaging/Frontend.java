@@ -19,6 +19,8 @@ package io.openshift.booster.messaging;
 
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.StaticHandler;
@@ -28,6 +30,9 @@ import io.vertx.proton.ProtonReceiver;
 import io.vertx.proton.ProtonSender;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Queue;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.qpid.proton.amqp.messaging.AmqpValue;
 import org.apache.qpid.proton.amqp.messaging.ApplicationProperties;
@@ -37,40 +42,55 @@ import org.apache.qpid.proton.message.Message;
 import static io.vertx.core.http.HttpHeaders.CONTENT_TYPE;
 
 public class Frontend {
-    private static String id = "frontend-vertx-" +
-        (Math.round(Math.random() * (10000 - 1000)) + 1000);
-
-    private static AtomicInteger requestsProcessed = new AtomicInteger(0);
+    private static final Logger log = LoggerFactory.getLogger(Frontend.class);
+    private static final String id = "frontend-vertx-" + UUID.randomUUID()
+        .toString().substring(0, 4);
+    private static final Data data = new Data();
+    private static final Queue<Message> requests = new ConcurrentLinkedQueue<>();
 
     public static void main(String[] args) {
         try {
-            String host = System.getenv("MESSAGING_SERVICE_HOST");
-            String portString = System.getenv("MESSAGING_SERVICE_PORT");
-            String user = System.getenv("MESSAGING_SERVICE_USER");
-            String password = System.getenv("MESSAGING_SERVICE_PASSWORD");
+            String amqpHost = System.getenv("MESSAGING_SERVICE_HOST");
+            String amqpPortString = System.getenv("MESSAGING_SERVICE_PORT");
+            String amqpUser = System.getenv("MESSAGING_SERVICE_USER");
+            String amqpPassword = System.getenv("MESSAGING_SERVICE_PASSWORD");
 
-            if (host == null) {
-                host = "localhost";
+            String httpHost = System.getenv("HTTP_HOST");
+            String httpPortString = System.getenv("HTTP_PORT");
+
+            if (amqpHost == null) {
+                amqpHost = "localhost";
             }
 
-            if (portString == null) {
-                portString = "5672";
+            if (amqpPortString == null) {
+                amqpPortString = "5672";
             }
 
-            if (user == null) {
-                user = "work-queue";
+            if (amqpUser == null) {
+                amqpUser = "work-queue";
             }
 
-            if (password == null) {
-                password = "work-queue";
+            if (amqpPassword == null) {
+                amqpPassword = "work-queue";
             }
 
-            int port = Integer.parseInt(portString);
+            if (httpHost == null) {
+                httpHost = "localhost";
+            }
+
+            if (httpPortString == null) {
+                httpPortString = "8080";
+            }
+
+            int amqpPort = Integer.parseInt(amqpPortString);
+            int httpPort = Integer.parseInt(httpPortString);
+
+            // AMQP
 
             Vertx vertx = Vertx.vertx();
             ProtonClient client = ProtonClient.create(vertx);
 
-            client.connect(host, port, user, password, (result) -> {
+            client.connect(amqpHost, amqpPort, amqpUser, amqpPassword, (result) -> {
                     if (result.failed()) {
                         result.cause().printStackTrace();
                         return;
@@ -80,18 +100,23 @@ public class Frontend {
                     conn.setContainer(id);
                     conn.open();
 
-                    // handleRequests(vertx, conn);
-                    // sendStatusUpdates(vertx, conn);
+                    receiveResponses(vertx, conn);
+                    receiveWorkerUpdates(vertx, conn);
+                    pruneStaleWorkers(vertx);
                 });
+
+            // HTTP
 
             Router router = Router.router(vertx);
 
-            router.get("/api/data").handler(Frontend::getData);
+            router.get("/api/data").handler(Frontend::handleGetData);
+            router.get("/api/health/readiness").handler(Frontend::handleGetReadiness);
+            router.get("/api/health/liveness").handler(Frontend::handleGetLiveness);
             router.get("/*").handler(StaticHandler.create());
 
             vertx.createHttpServer()
                 .requestHandler(router::accept)
-                .listen(8080, (result) -> {
+                .listen(httpPort, httpHost, (result) -> {
                         if (result.failed()) {
                             result.cause().printStackTrace();
                             return;
@@ -107,83 +132,109 @@ public class Frontend {
         }
     }
 
-    private static void getData(RoutingContext rc) {
+    private static void sendRequests() {
+        ProtonSender sender = conn.createSender("work-queue/requests");
+
+        sender.sendQueueDrainHandler((sender) -> {
+                // while (!sender.sendQueueFull())
+            });
+
+        // if (responseReceiver == null) {
+        //     return;
+        // }
+
+        // if (conn.isDisconnected()) {
+        //     return;
+        // }
+
+        // if (requestSender.sendQueueFull()) {
+        //     return;
+        // }
+
+        //while (requestSender.credit()
+    }
+
+    private static void receiveResponses(Vertx vertx, ProtonConnection conn) {
+        ProtonReceiver receiver = conn.createReceiver("work-queue/responses");
+
+        receiver.handler((delivery, message) -> {
+                String workerId = (String) message.getApplicationProperties()
+                    .getValue().get("workerId");
+                String text = (String) ((AmqpValue) message.getBody()).getValue();
+
+                Response response = new Response(workerId, text);
+
+                data.getResponses().add(response);
+
+                log.info("Received {0}", response);
+            });
+    }
+
+    private static void receiveWorkerUpdates(Vertx vertx, ProtonConnection conn) {
+        ProtonReceiver receiver = conn.createReceiver("work-queue/worker-updates");
+
+        receiver.handler((delivery, message) -> {
+                Map properties = message.getApplicationProperties().getValue();
+                String workerId = (String) properties.get("workerId");
+                long timestamp = (long) properties.get("timestamp");
+                long requestsProcessed = (long) properties.get("requestsProcessed");
+
+                WorkerUpdate update = new WorkerUpdate(workerId, timestamp, requestsProcessed);
+
+                data.getWorkers().put(update.getWorkerId(), update);
+            });
+    }
+
+    private static void handleSendRequest(RoutingContext rc) {
+        String text = rc.getBodyAsString();
+
+        // XXX Convert input json using Request
+
+        Message message = Message.Factory.create();
+
+        message.setBody(new AmqpValue(text));
+        message.setReplyTo("work-queue/responses");
+
+        requests.add(message);
+
+        sendRequests();
+
+        rc.response().end();
+    }
+
+    private static void handleGetData(RoutingContext rc) {
         JsonObject response = new JsonObject()
             .put("content", "datUUH!");
 
         rc.response()
             .putHeader(CONTENT_TYPE, "application/json; charset=utf-8")
-            .end(response.encodePrettily());
+            .end(response.encode());
     }
 
-    // private static void handleRequests(Vertx vertx, ProtonConnection conn) {
-    //     ProtonReceiver receiver = conn.createReceiver("work-queue/requests");
-    //     ProtonSender sender = conn.createSender(null);
+    private static void handleGetReadiness(RoutingContext rc) {
+        rc.response().end("OK");
+    }
 
-    //     receiver.handler((delivery, request) -> {
-    //             String requestBody = (String) ((AmqpValue) request.getBody()).getValue();
-    //             System.out.println("WORKER-VERTX: Received request '" + requestBody + "'");
+    private static void handleGetLiveness(RoutingContext rc) {
+        rc.response().end("OK");
+    }
 
-    //             String responseBody;
+    private static void pruneStaleWorkers(Vertx vertx) {
+        vertx.setPeriodic(5 * 1000, (timer) -> {
+                log.info("Pruning stale workers");
 
-    //             try {
-    //                 responseBody = processRequest(request);
-    //             } catch (Exception e) {
-    //                 System.err.println("WORKER-VERTX: Failed processing message: " + e);
-    //                 return;
-    //             }
+                Map<String, WorkerUpdate> workers = data.getWorkers();
+                long now = System.currentTimeMillis();
 
-    //             System.out.println("WORKER-VERTX: Sending response '" + responseBody + "'");
+                for (Map.Entry<String, WorkerUpdate> entry : workers.entrySet()) {
+                    String workerId = entry.getKey();
+                    WorkerUpdate update = entry.getValue();
 
-    //             Map<String, String> props = new HashMap<String, String>();
-    //             props.put("worker_id", conn.getContainer());
-
-    //             Message response = Message.Factory.create();
-    //             response.setAddress(request.getReplyTo());
-    //             response.setCorrelationId(request.getMessageId());
-    //             response.setBody(new AmqpValue(responseBody));
-    //             response.setApplicationProperties(new ApplicationProperties(props));
-
-    //             sender.send(response);
-
-    //             requestsProcessed.incrementAndGet();
-    //         });
-
-    //     sender.open();
-    //     receiver.open();
-    // }
-
-    // private static String processRequest(Message request) throws Exception {
-    //     String requestBody = (String) ((AmqpValue) request.getBody()).getValue();
-    //     return requestBody.toUpperCase();
-    // }
-
-    // private static void sendStatusUpdates(Vertx vertx, ProtonConnection conn) {
-    //     ProtonSender sender = conn.createSender("work-queue/worker-status");
-
-    //     vertx.setPeriodic(5 * 1000, (timer) -> {
-    //             if (conn.isDisconnected()) {
-    //                 vertx.cancelTimer(timer);
-    //                 return;
-    //             }
-
-    //             if (sender.sendQueueFull()) {
-    //                 return;
-    //             }
-
-    //             System.out.println("WORKER-VERTX: Sending status update");
-
-    //             Map<String, Object> props = new HashMap<String, Object>();
-    //             props.put("worker_id", conn.getContainer());
-    //             props.put("timestamp", System.currentTimeMillis());
-    //             props.put("requests_processed", requestsProcessed.get());
-
-    //             Message status = Message.Factory.create();
-    //             status.setApplicationProperties(new ApplicationProperties(props));
-
-    //             sender.send(status);
-    //         });
-
-    //     sender.open();
-    // }
+                    if (now - update.getTimestamp() > 10 * 1000) {
+                        workers.remove(workerId);
+                        log.info("Pruned {0}", update);
+                    }
+                }
+            });
+    }
 }

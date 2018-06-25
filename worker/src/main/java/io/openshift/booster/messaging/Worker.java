@@ -18,6 +18,8 @@
 package io.openshift.booster.messaging;
 
 import io.vertx.core.Vertx;
+import io.vertx.ext.web.Router;
+import io.vertx.ext.web.RoutingContext;
 import io.vertx.proton.ProtonClient;
 import io.vertx.proton.ProtonConnection;
 import io.vertx.proton.ProtonReceiver;
@@ -38,33 +40,47 @@ public class Worker {
 
     public static void main(String[] args) {
         try {
-            String host = System.getenv("MESSAGING_SERVICE_HOST");
-            String portString = System.getenv("MESSAGING_SERVICE_PORT");
-            String user = System.getenv("MESSAGING_SERVICE_USER");
-            String password = System.getenv("MESSAGING_SERVICE_PASSWORD");
+            String amqpHost = System.getenv("MESSAGING_SERVICE_HOST");
+            String amqpPortString = System.getenv("MESSAGING_SERVICE_PORT");
+            String amqpUser = System.getenv("MESSAGING_SERVICE_USER");
+            String amqpPassword = System.getenv("MESSAGING_SERVICE_PASSWORD");
 
-            if (host == null) {
-                host = "localhost";
+            String httpHost = System.getenv("HTTP_HOST");
+            String httpPortString = System.getenv("HTTP_PORT");
+
+            if (amqpHost == null) {
+                amqpHost = "localhost";
             }
 
-            if (portString == null) {
-                portString = "5672";
+            if (amqpPortString == null) {
+                amqpPortString = "5672";
             }
 
-            if (user == null) {
-                user = "work-queue";
+            if (amqpUser == null) {
+                amqpUser = "work-queue";
             }
 
-            if (password == null) {
-                password = "work-queue";
+            if (amqpPassword == null) {
+                amqpPassword = "work-queue";
             }
 
-            int port = Integer.parseInt(portString);
+            if (httpHost == null) {
+                httpHost = "localhost";
+            }
+
+            if (httpPortString == null) {
+                httpPortString = "8080";
+            }
+
+            int amqpPort = Integer.parseInt(amqpPortString);
+            int httpPort = Integer.parseInt(httpPortString);
+
+            // AMQP
 
             Vertx vertx = Vertx.vertx();
             ProtonClient client = ProtonClient.create(vertx);
 
-            client.connect(host, port, user, password, (res) -> {
+            client.connect(amqpHost, amqpPort, amqpUser, amqpPassword, (res) -> {
                     if (res.failed()) {
                         res.cause().printStackTrace();
                         return;
@@ -74,9 +90,25 @@ public class Worker {
                     conn.setContainer(id);
                     conn.open();
 
-                    handleRequests(vertx, conn);
+                    receiveRequests(vertx, conn);
                     sendStatusUpdates(vertx, conn);
                 });
+
+            // HTTP
+
+            Router router = Router.router(vertx);
+
+            router.get("/api/health/readiness").handler(Worker::handleGetReadiness);
+            router.get("/api/health/liveness").handler(Worker::handleGetLiveness);
+
+            vertx.createHttpServer()
+                .requestHandler(router::accept)
+                .listen(httpPort, httpHost, (result) -> {
+                        if (result.failed()) {
+                            result.cause().printStackTrace();
+                            return;
+                        }
+                    });
 
             while (true) {
                 Thread.sleep(60 * 1000);
@@ -87,8 +119,13 @@ public class Worker {
         }
     }
 
-    private static void handleRequests(Vertx vertx, ProtonConnection conn) {
+    private static void receiveRequests(Vertx vertx, ProtonConnection conn) {
         ProtonReceiver receiver = conn.createReceiver("work-queue/requests");
+
+        // Ordinarily, a sender or receiver is tied to a named message
+        // source or target. By contrast, a null sender transmits
+        // messages using an "anonymous" link and routes them to their
+        // destination using the "to" property of the message.
         ProtonSender sender = conn.createSender(null);
 
         receiver.handler((delivery, request) -> {
@@ -156,5 +193,13 @@ public class Worker {
             });
 
         sender.open();
+    }
+
+    private static void handleGetReadiness(RoutingContext rc) {
+        rc.response().end("OK");
+    }
+
+    private static void handleGetLiveness(RoutingContext rc) {
+        rc.response().end("OK");
     }
 }
