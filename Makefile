@@ -13,7 +13,7 @@ build:
 
 .PHONY: run
 run:
-	scripts/run-all
+	scripts/run
 
 .PHONY: clean
 clean:

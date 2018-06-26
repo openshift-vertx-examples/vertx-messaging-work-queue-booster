@@ -17,17 +17,20 @@
 
 package io.openshift.booster.messaging;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.Vertx;
-import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
+import io.vertx.ext.web.handler.BodyHandler;
 import io.vertx.ext.web.handler.StaticHandler;
 import io.vertx.proton.ProtonClient;
 import io.vertx.proton.ProtonConnection;
 import io.vertx.proton.ProtonReceiver;
 import io.vertx.proton.ProtonSender;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Queue;
@@ -37,6 +40,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.qpid.proton.amqp.messaging.AmqpValue;
 import org.apache.qpid.proton.amqp.messaging.ApplicationProperties;
 import org.apache.qpid.proton.amqp.messaging.Section;
+import org.apache.qpid.proton.amqp.messaging.Source;
 import org.apache.qpid.proton.message.Message;
 
 import static io.vertx.core.http.HttpHeaders.CONTENT_TYPE;
@@ -46,7 +50,10 @@ public class Frontend {
     private static final String id = "frontend-vertx-" + UUID.randomUUID()
         .toString().substring(0, 4);
     private static final Data data = new Data();
-    private static final Queue<Message> requests = new ConcurrentLinkedQueue<>();
+    private static final ObjectMapper mapper = new ObjectMapper();
+    private static final Queue<Message> requestMessages = new ConcurrentLinkedQueue<>();
+    private static ProtonSender requestSender;
+    private static ProtonReceiver responseReceiver;
 
     public static void main(String[] args) {
         try {
@@ -100,7 +107,7 @@ public class Frontend {
                     conn.setContainer(id);
                     conn.open();
 
-                    receiveResponses(vertx, conn);
+                    sendRequests(vertx, conn);
                     receiveWorkerUpdates(vertx, conn);
                     pruneStaleWorkers(vertx);
                 });
@@ -109,6 +116,8 @@ public class Frontend {
 
             Router router = Router.router(vertx);
 
+            router.route().handler(BodyHandler.create());
+            router.post("/api/send-request").handler(Frontend::handleSendRequest);
             router.get("/api/data").handler(Frontend::handleGetData);
             router.get("/api/health/readiness").handler(Frontend::handleGetReadiness);
             router.get("/api/health/liveness").handler(Frontend::handleGetLiveness);
@@ -132,42 +141,58 @@ public class Frontend {
         }
     }
 
-    private static void sendRequests() {
-        ProtonSender sender = conn.createSender("work-queue/requests");
+    private static void sendRequests(Vertx vertx, ProtonConnection conn) {
+        requestSender = conn.createSender("work-queue/requests");
 
-        sender.sendQueueDrainHandler((sender) -> {
-                // while (!sender.sendQueueFull())
+        // Using a null address and setting the source dynamic tells
+        // the remote peer to generate the reply address.
+        responseReceiver = conn.createReceiver(null);
+        Source source = (Source) responseReceiver.getSource();
+        source.setDynamic(true);
+
+        responseReceiver.openHandler((result) -> {
+                requestSender.sendQueueDrainHandler((s) -> {
+                        doSendRequests();
+                    });
             });
 
-        // if (responseReceiver == null) {
-        //     return;
-        // }
-
-        // if (conn.isDisconnected()) {
-        //     return;
-        // }
-
-        // if (requestSender.sendQueueFull()) {
-        //     return;
-        // }
-
-        //while (requestSender.credit()
-    }
-
-    private static void receiveResponses(Vertx vertx, ProtonConnection conn) {
-        ProtonReceiver receiver = conn.createReceiver("work-queue/responses");
-
-        receiver.handler((delivery, message) -> {
+        responseReceiver.handler((delivery, message) -> {
                 String workerId = (String) message.getApplicationProperties()
                     .getValue().get("workerId");
                 String text = (String) ((AmqpValue) message.getBody()).getValue();
-
                 Response response = new Response(workerId, text);
 
                 data.getResponses().add(response);
 
                 log.info("Received {0}", response);
             });
+
+        requestSender.open();
+        responseReceiver.open();
+    }
+
+    private static void doSendRequests() {
+        if (responseReceiver == null) {
+            return;
+        }
+
+        if (responseReceiver.getRemoteSource().getAddress() == null) {
+            return;
+        }
+        
+        while (!requestSender.sendQueueFull()) {
+            Message message = requestMessages.poll();
+
+            if (message == null) {
+                break;
+            }
+
+            message.setReplyTo(responseReceiver.getRemoteSource().getAddress());
+
+            requestSender.send(message);
+
+            log.info("Sent {0}", message);
+        }
     }
 
     private static void receiveWorkerUpdates(Vertx vertx, ProtonConnection conn) {
@@ -183,32 +208,43 @@ public class Frontend {
 
                 data.getWorkers().put(update.getWorkerId(), update);
             });
+
+        receiver.open();
     }
 
     private static void handleSendRequest(RoutingContext rc) {
-        String text = rc.getBodyAsString();
-
-        // XXX Convert input json using Request
-
+        String json = rc.getBodyAsString();
         Message message = Message.Factory.create();
+        Request request;
 
-        message.setBody(new AmqpValue(text));
-        message.setReplyTo("work-queue/responses");
+        try {
+            request = mapper.readValue(json, Request.class);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
 
-        requests.add(message);
+        message.setAddress("work-queue/requests");
+        message.setBody(new AmqpValue(request.getText()));
 
-        sendRequests();
+        requestMessages.add(message);
+
+        doSendRequests();
 
         rc.response().end();
     }
 
     private static void handleGetData(RoutingContext rc) {
-        JsonObject response = new JsonObject()
-            .put("content", "datUUH!");
+        String json;
+
+        try {
+            json = mapper.writeValueAsString(data);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
 
         rc.response()
             .putHeader(CONTENT_TYPE, "application/json; charset=utf-8")
-            .end(response.encode());
+            .end(json);
     }
 
     private static void handleGetReadiness(RoutingContext rc) {

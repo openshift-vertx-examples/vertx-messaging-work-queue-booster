@@ -18,6 +18,8 @@
 package io.openshift.booster.messaging;
 
 import io.vertx.core.Vertx;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.proton.ProtonClient;
@@ -26,6 +28,7 @@ import io.vertx.proton.ProtonReceiver;
 import io.vertx.proton.ProtonSender;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.qpid.proton.amqp.messaging.AmqpValue;
 import org.apache.qpid.proton.amqp.messaging.ApplicationProperties;
@@ -33,8 +36,9 @@ import org.apache.qpid.proton.amqp.messaging.Section;
 import org.apache.qpid.proton.message.Message;
 
 public class Worker {
-    private static String id = "worker-vertx-" +
-        (Math.round(Math.random() * (10000 - 1000)) + 1000);
+    private static final Logger log = LoggerFactory.getLogger(Worker.class);
+    private static final String id = "worker-vertx-" + UUID.randomUUID()
+        .toString().substring(0, 4);
 
     private static AtomicInteger requestsProcessed = new AtomicInteger(0);
 
@@ -80,13 +84,13 @@ public class Worker {
             Vertx vertx = Vertx.vertx();
             ProtonClient client = ProtonClient.create(vertx);
 
-            client.connect(amqpHost, amqpPort, amqpUser, amqpPassword, (res) -> {
-                    if (res.failed()) {
-                        res.cause().printStackTrace();
+            client.connect(amqpHost, amqpPort, amqpUser, amqpPassword, (result) -> {
+                    if (result.failed()) {
+                        result.cause().printStackTrace();
                         return;
                     }
 
-                    ProtonConnection conn = res.result();
+                    ProtonConnection conn = result.result();
                     conn.setContainer(id);
                     conn.open();
 
@@ -120,31 +124,29 @@ public class Worker {
     }
 
     private static void receiveRequests(Vertx vertx, ProtonConnection conn) {
-        ProtonReceiver receiver = conn.createReceiver("work-queue/requests");
-
         // Ordinarily, a sender or receiver is tied to a named message
         // source or target. By contrast, a null sender transmits
         // messages using an "anonymous" link and routes them to their
         // destination using the "to" property of the message.
         ProtonSender sender = conn.createSender(null);
 
-        receiver.handler((delivery, request) -> {
-                String requestBody = (String) ((AmqpValue) request.getBody()).getValue();
-                System.out.println("WORKER: Received request '" + requestBody + "'");
+        ProtonReceiver receiver = conn.createReceiver("work-queue/requests");
 
+        receiver.handler((delivery, request) -> {
+                log.info("Receiving request {0}", request);
+
+                String requestBody = (String) ((AmqpValue) request.getBody()).getValue();
                 String responseBody;
 
                 try {
                     responseBody = processRequest(request);
                 } catch (Exception e) {
-                    System.err.println("WORKER: Failed processing request: " + e);
+                    log.error("Failed processing message: " + e);
                     return;
                 }
 
-                System.out.println("WORKER: Sending response '" + responseBody + "'");
-
                 Map<String, Object> props = new HashMap<String, Object>();
-                props.put("worker_id", conn.getContainer());
+                props.put("workerId", conn.getContainer());
 
                 Message response = Message.Factory.create();
                 response.setAddress(request.getReplyTo());
@@ -155,6 +157,8 @@ public class Worker {
                 sender.send(response);
 
                 requestsProcessed.incrementAndGet();
+
+                log.info("Sent {0}", response);
             });
 
         sender.open();
@@ -179,17 +183,17 @@ public class Worker {
                     return;
                 }
 
-                System.out.println("WORKER: Sending status update");
+                log.info("Sending status update");
 
-                Map<String, Object> props = new HashMap<String, Object>();
-                props.put("workerId", conn.getContainer());
-                props.put("timestamp", System.currentTimeMillis());
-                props.put("requestsProcessed", requestsProcessed.get());
+                Map<String, Object> properties = new HashMap<String, Object>();
+                properties.put("workerId", conn.getContainer());
+                properties.put("timestamp", System.currentTimeMillis());
+                properties.put("requestsProcessed", (long) requestsProcessed.get());
 
-                Message status = Message.Factory.create();
-                status.setApplicationProperties(new ApplicationProperties(props));
+                Message message = Message.Factory.create();
+                message.setApplicationProperties(new ApplicationProperties(properties));
 
-                sender.send(status);
+                sender.send(message);
             });
 
         sender.open();
