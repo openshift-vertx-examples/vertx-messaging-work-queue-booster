@@ -53,7 +53,7 @@ public class Worker {
             String httpPortString = System.getenv("HTTP_PORT");
 
             if (amqpHost == null) {
-                amqpHost = "0.0.0.0";
+                amqpHost = "localhost";
             }
 
             if (amqpPortString == null) {
@@ -69,7 +69,7 @@ public class Worker {
             }
 
             if (httpHost == null) {
-                httpHost = "localhost";
+                httpHost = "0.0.0.0";
             }
 
             if (httpPortString == null) {
