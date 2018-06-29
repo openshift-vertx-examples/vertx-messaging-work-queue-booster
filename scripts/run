@@ -4,8 +4,6 @@ from plano import *
 
 ENV["MESSAGING_SERVICE_PORT"] = "5672"
 
-#ENV["PN_TRACE_FRM"] = "1"
-
 enable_logging(level="debug")
 
 worker_1 = None
