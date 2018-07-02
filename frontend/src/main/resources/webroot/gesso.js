@@ -21,8 +21,8 @@
 
 "use strict";
 
-var $ = document.querySelector.bind(document);
-var $$ = document.querySelectorAll.bind(document);
+const $ = document.querySelector.bind(document);
+const $$ = document.querySelectorAll.bind(document);
 
 Element.prototype.$ = function () {
   return this.querySelector.apply(this, arguments);
@@ -32,13 +32,13 @@ Element.prototype.$$ = function () {
   return this.querySelectorAll.apply(this, arguments);
 };
 
-var gesso = {
+const gesso = {
     openRequest: function (method, url, handler) {
-        var request = new XMLHttpRequest();
+        let request = new XMLHttpRequest();
 
         request.open(method, url);
 
-        if (handler) {
+        if (handler != null) {
             request.addEventListener("load", handler);
         }
 
@@ -60,9 +60,9 @@ var gesso = {
     },
 
     getFetchState: function (path) {
-        var state = gesso.fetchStates[path];
+        let state = gesso.fetchStates[path];
 
-        if (!state) {
+        if (state == null) {
             state = new gesso.FetchState();
             gesso.fetchStates[path] = state;
         }
@@ -73,14 +73,16 @@ var gesso = {
     fetch: function (path, dataHandler) {
         console.log("Fetching data from", path);
 
-        var state = gesso.getFetchState(path);
+        let state = gesso.getFetchState(path);
 
         function loadHandler(event) {
             if (event.target.status === 200) {
-                state.etag = event.target.getResponseHeader("ETag");
                 state.failedAttempts = 0;
+                state.etag = event.target.getResponseHeader("ETag");
 
                 dataHandler(JSON.parse(event.target.responseText));
+            } else if (event.target.status == 304) {
+                state.failedAttempts = 0;
             }
 
             state.timestamp = new Date().getTime();
@@ -92,11 +94,11 @@ var gesso = {
             state.failedAttempts++;
         }
 
-        var request = gesso.openRequest("GET", path, loadHandler);
+        let request = gesso.openRequest("GET", path, loadHandler);
 
         request.addEventListener("error", errorHandler);
 
-        var etag = state.etag;
+        let etag = state.etag;
 
         if (etag) {
             request.setRequestHeader("If-None-Match", etag);
@@ -108,7 +110,7 @@ var gesso = {
     },
 
     fetchPeriodically: function (path, dataHandler) {
-        var state = gesso.getFetchState(path);
+        let state = gesso.getFetchState(path);
 
         window.clearTimeout(state.currentTimeoutId);
         state.currentInterval = gesso.minFetchInterval;
@@ -138,11 +140,11 @@ var gesso = {
             str = str.slice(1);
         }
 
-        var qvars = str.split(/[&;]/);
-        var obj = {};
+        let qvars = str.split(/[&;]/);
+        let obj = {};
 
-        for (var i = 0; i < qvars.length; i++) {
-            var [name, value] = qvars[i].split("=", 2);
+        for (let i = 0; i < qvars.length; i++) {
+            let [name, value] = qvars[i].split("=", 2);
 
             name = decodeURIComponent(name);
             value = decodeURIComponent(value);
@@ -154,14 +156,14 @@ var gesso = {
     },
 
     emitQueryString: function (obj) {
-        var tokens = [];
+        let tokens = [];
 
-        for (var name in obj) {
+        for (let name in obj) {
             if (!obj.hasOwnProperty(name)) {
                 continue;
             }
 
-            var value = obj[name];
+            let value = obj[name];
 
             name = decodeURIComponent(name);
             value = decodeURIComponent(value);
@@ -173,11 +175,13 @@ var gesso = {
     },
 
     createElement: function (parent, tag, text) {
-        var elem = document.createElement(tag);
+        let elem = document.createElement(tag);
 
-        parent.appendChild(elem);
+        if (parent != null) {
+            parent.appendChild(elem);
+        }
 
-        if (text) {
+        if (text != null) {
             gesso.createText(elem, text);
         }
 
@@ -185,30 +189,112 @@ var gesso = {
     },
 
     createText: function (parent, text) {
-        var node = document.createTextNode(text);
+        let node = document.createTextNode(text);
 
-        parent.appendChild(node);
+        if (parent != null) {
+            parent.appendChild(node);
+        }
 
         return node;
     },
 
-    createDiv: function (parent, clazz, text) {
-        var elem = gesso.createElement(parent, "div", text);
-
-        if (clazz) {
-            elem.setAttribute("class", clazz);
+    _setSelector: function (elem, selector) {
+        if (selector == null) {
+            return;
         }
+
+        if (selector.startsWith("#")) {
+            elem.setAttribute("id", selector.slice(1));
+        } else {
+            elem.setAttribute("class", selector);
+        }
+    },
+
+    createDiv: function (parent, selector, text) {
+        let elem = gesso.createElement(parent, "div", text);
+
+        gesso._setSelector(elem, selector);
+
+        return elem;
+    },
+
+    createSpan: function (parent, selector, text) {
+        let elem = gesso.createElement(parent, "span", text);
+
+        gesso._setSelector(elem, selector);
 
         return elem;
     },
 
     createLink: function (parent, href, text) {
-        var elem = gesso.createElement(parent, "a", text);
+        let elem = gesso.createElement(parent, "a", text);
 
-        if (href) {
+        if (href != null) {
             elem.setAttribute("href", href);
         }
 
         return elem;
+    },
+
+    createTable: function (parent, headings, rows) {
+        let elem = gesso.createElement(parent, "table");
+        let thead = gesso.createElement(elem, "thead");
+        let tbody = gesso.createElement(elem, "tbody");
+
+        if (headings) {
+            let tr = gesso.createElement(thead, "tr");
+
+            for (let heading of headings) {
+                gesso.createElement(tr, "th", heading);
+            }
+        }
+
+        for (let row of rows) {
+            let tr = gesso.createElement(tbody, "tr");
+
+            for (let cell of row) {
+                gesso.createElement(tr, "td", cell);
+            }
+        }
+
+        return elem;
+    },
+
+    replaceElement: function(oldElement, newElement) {
+        oldElement.parentNode.replaceChild(newElement, oldElement);
+    },
+
+    formatDuration: function (milliseconds) {
+        if (milliseconds == null) {
+            return "-";
+        }
+
+        let seconds = Math.round(milliseconds / 1000);
+        let minutes = Math.round(milliseconds / 60 / 1000);
+        let hours = Math.round(milliseconds / 3600 / 1000);
+        let days = Math.round(milliseconds / 86400 / 1000);
+        let weeks = Math.round(milliseconds / 432000 / 1000);
+
+        if (weeks >= 2) {
+            return `${weeks} weeks`;
+        }
+
+        if (days >= 2) {
+            return `${days} days`;
+        }
+
+        if (hours >= 1) {
+            return `${hours} hours`;
+        }
+
+        if (minutes >= 1) {
+            return `${minutes} minutes`;
+        }
+
+        if (seconds === 1) {
+            return "1 second";
+        }
+
+        return `${seconds} seconds`;
     }
 }
