@@ -73,7 +73,7 @@ class Application {
     }
 
     renderResponses() {
-        if (this.data.responses.length === 0) {
+        if (this.data.requestIds.length === 0) {
             return;
         }
 
@@ -81,7 +81,13 @@ class Application {
 
         let div = gesso.createDiv(null, "#responses");
 
-        for (let response of this.data.responses.reverse()) {
+        for (let requestId of this.data.requestIds.reverse()) {
+            let response = this.data.responses[requestId];
+
+            if (response == null) {
+                continue;
+            }
+
             let item = gesso.createDiv(div, "response");
             gesso.createDiv(item, "worker", response.workerId);
             gesso.createDiv(item, "text", response.text);

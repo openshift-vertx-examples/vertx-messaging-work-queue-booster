@@ -23,15 +23,21 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class Data {
-    private final Queue<Response> responses;
+    private final Queue<String> requestIds;
+    private final Map<String, Response> responses;
     private final Map<String, WorkerUpdate> workers;
 
     public Data() {
-        this.responses = new ConcurrentLinkedQueue<>();
+        this.requestIds = new ConcurrentLinkedQueue<>();
+        this.responses = new ConcurrentHashMap<>();
         this.workers = new ConcurrentHashMap<>();
     }
 
-    public Queue<Response> getResponses() {
+    public Queue<String> getRequestIds() {
+        return requestIds;
+    }
+
+    public Map<String, Response> getResponses() {
         return responses;
     }
 
@@ -41,6 +47,7 @@ public class Data {
 
     @Override
     public String toString() {
-        return String.format("Data{responses='%s', workers='%s'}", responses, workers);
+        return String.format("Data{requestIds=%s, responses=%s, workers=%s}",
+                             requestIds, responses, workers);
     }
 }

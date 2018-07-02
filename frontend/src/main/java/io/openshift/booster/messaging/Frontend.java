@@ -32,6 +32,7 @@ import io.vertx.proton.ProtonReceiver;
 import io.vertx.proton.ProtonSender;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.UUID;
@@ -118,6 +119,7 @@ public class Frontend {
 
             router.route().handler(BodyHandler.create());
             router.post("/api/send-request").handler(Frontend::handleSendRequest);
+            router.get("/api/receive-response").handler(Frontend::handleReceiveResponse);
             router.get("/api/data").handler(Frontend::handleGetData);
             router.get("/api/health/readiness").handler(Frontend::handleGetReadiness);
             router.get("/api/health/liveness").handler(Frontend::handleGetLiveness);
@@ -157,12 +159,13 @@ public class Frontend {
             });
 
         responseReceiver.handler((delivery, message) -> {
-                String workerId = (String) message.getApplicationProperties()
-                    .getValue().get("workerId");
+                Map props = message.getApplicationProperties().getValue();
+                String workerId = (String) props.get("workerId");
+                String requestId = (String) message.getCorrelationId();
                 String text = (String) ((AmqpValue) message.getBody()).getValue();
-                Response response = new Response(workerId, text);
+                Response response = new Response(requestId, workerId, text);
 
-                data.getResponses().add(response);
+                data.getResponses().put(response.getRequestId(), response);
 
                 log.info("Received {0}", response);
             });
@@ -216,6 +219,7 @@ public class Frontend {
 
     private static void handleSendRequest(RoutingContext rc) {
         String json = rc.getBodyAsString();
+        String requestId = UUID.randomUUID().toString();
         Request request;
 
         try {
@@ -229,15 +233,51 @@ public class Frontend {
         props.put("reverse", request.isReverse());
 
         Message message = Message.Factory.create();
+        message.setMessageId(requestId);
         message.setAddress("work-queue/requests");
         message.setBody(new AmqpValue(request.getText()));
         message.setApplicationProperties(new ApplicationProperties(props));
 
         requestMessages.add(message);
 
+        data.getRequestIds().add(requestId);
+
         doSendRequests();
 
-        rc.response().end();
+        rc.response()
+            .setStatusCode(202)
+            .putHeader(CONTENT_TYPE, "text/plain; charset=utf-8")
+            .end(requestId);
+    }
+
+    private static void handleReceiveResponse(RoutingContext rc) {
+        List<String> values = rc.queryParam("request");
+
+        if (values.size() != 1) {
+            rc.fail(500);
+            return;
+        }
+
+        Response response = data.getResponses().get(values.get(0));
+
+        if (response == null) {
+            rc.response().setStatusCode(202).end();
+            return;
+        }
+
+        String json;
+
+        try {
+            json = mapper.writeValueAsString(response);
+        } catch (JsonProcessingException e) {
+            rc.fail(e);
+            return;
+        }
+
+        rc.response()
+            .setStatusCode(200)
+            .putHeader(CONTENT_TYPE, "application/json; charset=utf-8")
+            .end(json);
     }
 
     private static void handleGetData(RoutingContext rc) {
@@ -246,7 +286,8 @@ public class Frontend {
         try {
             json = mapper.writeValueAsString(data);
         } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+            rc.fail(e);
+            return;
         }
 
         rc.response()

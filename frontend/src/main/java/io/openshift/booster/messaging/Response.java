@@ -17,12 +17,18 @@
 package io.openshift.booster.messaging;
 
 public class Response {
+    private final String requestId;
     private final String workerId;
     private final String text;
 
-    public Response(String workerId, String text) {
+    public Response(String requestId, String workerId, String text) {
+        this.requestId = requestId;
         this.workerId = workerId;
         this.text = text;
+    }
+
+    public String getRequestId() {
+        return requestId;
     }
 
     public String getWorkerId() {
@@ -35,6 +41,7 @@ public class Response {
 
     @Override
     public String toString() {
-        return String.format("Response{workerId=%s, text=%s}", workerId, text);
+        return String.format("Response{requestId=%s, workerId=%s, text=%s}",
+                             requestId, workerId, text);
     }
 }
