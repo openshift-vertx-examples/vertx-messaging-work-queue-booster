@@ -179,7 +179,7 @@ public class Frontend {
         if (responseReceiver.getRemoteSource().getAddress() == null) {
             return;
         }
-        
+
         while (!requestSender.sendQueueFull()) {
             Message message = requestMessages.poll();
 
@@ -199,12 +199,14 @@ public class Frontend {
         ProtonReceiver receiver = conn.createReceiver("work-queue/worker-updates");
 
         receiver.handler((delivery, message) -> {
-                Map properties = message.getApplicationProperties().getValue();
-                String workerId = (String) properties.get("workerId");
-                long timestamp = (long) properties.get("timestamp");
-                long requestsProcessed = (long) properties.get("requestsProcessed");
+                Map props = message.getApplicationProperties().getValue();
+                String workerId = (String) props.get("workerId");
+                long timestamp = (long) props.get("timestamp");
+                long requestsProcessed = (long) props.get("requestsProcessed");
+                long processingErrors = (long) props.get("processingErrors");
 
-                WorkerUpdate update = new WorkerUpdate(workerId, timestamp, requestsProcessed);
+                WorkerUpdate update = new WorkerUpdate(workerId, timestamp, requestsProcessed,
+                                                       processingErrors);
 
                 data.getWorkers().put(update.getWorkerId(), update);
             });
@@ -214,7 +216,6 @@ public class Frontend {
 
     private static void handleSendRequest(RoutingContext rc) {
         String json = rc.getBodyAsString();
-        Message message = Message.Factory.create();
         Request request;
 
         try {
@@ -223,8 +224,14 @@ public class Frontend {
             throw new RuntimeException(e);
         }
 
+        Map<String, Object> props = new HashMap<String, Object>();
+        props.put("uppercase", request.isUppercase());
+        props.put("reverse", request.isReverse());
+
+        Message message = Message.Factory.create();
         message.setAddress("work-queue/requests");
         message.setBody(new AmqpValue(request.getText()));
+        message.setApplicationProperties(new ApplicationProperties(props));
 
         requestMessages.add(message);
 
@@ -257,7 +264,7 @@ public class Frontend {
 
     private static void pruneStaleWorkers(Vertx vertx) {
         vertx.setPeriodic(5 * 1000, (timer) -> {
-                log.info("Pruning stale workers");
+                log.debug("Pruning stale workers");
 
                 Map<String, WorkerUpdate> workers = data.getWorkers();
                 long now = System.currentTimeMillis();

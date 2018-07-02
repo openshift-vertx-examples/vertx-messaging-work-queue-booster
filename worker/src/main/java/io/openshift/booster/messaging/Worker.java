@@ -41,6 +41,7 @@ public class Worker {
         .toString().substring(0, 4);
 
     private static AtomicInteger requestsProcessed = new AtomicInteger(0);
+    private static AtomicInteger processingErrors = new AtomicInteger(0);
 
     public static void main(String[] args) {
         try {
@@ -95,7 +96,7 @@ public class Worker {
                     conn.open();
 
                     receiveRequests(vertx, conn);
-                    sendStatusUpdates(vertx, conn);
+                    sendUpdates(vertx, conn);
                 });
 
             // HTTP
@@ -142,6 +143,7 @@ public class Worker {
                     responseBody = processRequest(request);
                 } catch (Exception e) {
                     log.error("Failed processing message: " + e);
+                    processingErrors.incrementAndGet();
                     return;
                 }
 
@@ -166,11 +168,23 @@ public class Worker {
     }
 
     private static String processRequest(Message request) throws Exception {
-        String requestBody = (String) ((AmqpValue) request.getBody()).getValue();
-        return requestBody.toUpperCase();
+        Map props = request.getApplicationProperties().getValue();
+        boolean uppercase = (boolean) props.get("uppercase");
+        boolean reverse = (boolean) props.get("reverse");
+        String text = (String) ((AmqpValue) request.getBody()).getValue();
+
+        if (uppercase) {
+            text = text.toUpperCase();
+        }
+
+        if (reverse) {
+            text = new StringBuilder(text).reverse().toString();
+        }
+
+        return text;
     }
 
-    private static void sendStatusUpdates(Vertx vertx, ProtonConnection conn) {
+    private static void sendUpdates(Vertx vertx, ProtonConnection conn) {
         ProtonSender sender = conn.createSender("work-queue/worker-updates");
 
         vertx.setPeriodic(5 * 1000, (timer) -> {
@@ -183,12 +197,13 @@ public class Worker {
                     return;
                 }
 
-                log.info("Sending status update");
+                log.debug("Sending status update");
 
                 Map<String, Object> properties = new HashMap<String, Object>();
                 properties.put("workerId", conn.getContainer());
                 properties.put("timestamp", System.currentTimeMillis());
                 properties.put("requestsProcessed", (long) requestsProcessed.get());
+                properties.put("processingErrors", (long) processingErrors.get());
 
                 Message message = Message.Factory.create();
                 message.setApplicationProperties(new ApplicationProperties(properties));

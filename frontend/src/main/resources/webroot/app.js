@@ -60,8 +60,8 @@ class Application {
 
         let data = {
             text: form.text.value,
-            //uppercase: form.uppercase.checked,
-            //reverse: form.uppercase.checked
+            uppercase: form.uppercase.checked,
+            reverse: form.reverse.checked,
         };
 
         let json = JSON.stringify(data);
@@ -110,7 +110,7 @@ class Application {
             let update = this.data.workers[workerId];
             let time = new Date(update.timestamp).toLocaleString();
             let requestsProcessed = update.requestsProcessed;
-            let processingErrors = 0;
+            let processingErrors = update.processingErrors;
 
             rows.push([workerId, time, requestsProcessed, processingErrors]);
         }

@@ -18,6 +18,8 @@ package io.openshift.booster.messaging;
 
 public class Request {
     private String text;
+    private boolean uppercase;
+    private boolean reverse;
 
     public String getText() {
         return text;
@@ -27,8 +29,17 @@ public class Request {
         this.text = text;
     }
 
+    public boolean isUppercase() {
+        return uppercase;
+    }
+
+    public boolean isReverse() {
+        return reverse;
+    }
+
     @Override
     public String toString() {
-        return String.format("Request{text=%s}", text);
+        return String.format("Request{text=%s, uppercase=%s, reverse=%s}",
+                             text, uppercase, reverse);
     }
 }
