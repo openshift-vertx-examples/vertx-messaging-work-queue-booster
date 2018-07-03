@@ -314,7 +314,7 @@ public class Frontend {
 
                     if (now - update.getTimestamp() > 10 * 1000) {
                         workers.remove(workerId);
-                        log.info("Pruned {0}", update);
+                        log.info("Pruned {0}", workerId);
                     }
                 }
             });
