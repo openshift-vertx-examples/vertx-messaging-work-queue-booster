@@ -40,8 +40,8 @@ public class Worker {
     private static final String id = "worker-vertx-" + UUID.randomUUID()
         .toString().substring(0, 4);
 
-    private static AtomicInteger requestsProcessed = new AtomicInteger(0);
-    private static AtomicInteger processingErrors = new AtomicInteger(0);
+    private static final AtomicInteger requestsProcessed = new AtomicInteger(0);
+    private static final AtomicInteger processingErrors = new AtomicInteger(0);
 
     public static void main(String[] args) {
         try {
@@ -134,7 +134,7 @@ public class Worker {
         ProtonReceiver receiver = conn.createReceiver("work-queue/requests");
 
         receiver.handler((delivery, request) -> {
-                log.info("Receiving request {0}", request);
+                log.info("{0}: Receiving request {1}", id, request);
 
                 String requestBody = (String) ((AmqpValue) request.getBody()).getValue();
                 String responseBody;
@@ -142,7 +142,7 @@ public class Worker {
                 try {
                     responseBody = processRequest(request);
                 } catch (Exception e) {
-                    log.error("Failed processing message: " + e);
+                    log.error("{0}: Failed processing message: {1}", id, e.getMessage());
                     processingErrors.incrementAndGet();
                     return;
                 }
@@ -160,7 +160,7 @@ public class Worker {
 
                 requestsProcessed.incrementAndGet();
 
-                log.info("Sent {0}", response);
+                log.info("{0}: Sent {1}", id, response);
             });
 
         sender.open();
@@ -197,7 +197,7 @@ public class Worker {
                     return;
                 }
 
-                log.debug("Sending status update");
+                log.debug("{0}: Sending status update", id);
 
                 Map<String, Object> properties = new HashMap<String, Object>();
                 properties.put("workerId", conn.getContainer());

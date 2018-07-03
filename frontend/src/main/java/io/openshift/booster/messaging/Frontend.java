@@ -50,11 +50,14 @@ public class Frontend {
     private static final Logger log = LoggerFactory.getLogger(Frontend.class);
     private static final String id = "frontend-vertx-" + UUID.randomUUID()
         .toString().substring(0, 4);
-    private static final Data data = new Data();
     private static final ObjectMapper mapper = new ObjectMapper();
-    private static final Queue<Message> requestMessages = new ConcurrentLinkedQueue<>();
+
     private static ProtonSender requestSender;
     private static ProtonReceiver responseReceiver;
+
+    private static final AtomicInteger requestSequence = new AtomicInteger(0);
+    private static final Queue<Message> requestMessages = new ConcurrentLinkedQueue<>();
+    private static final Data data = new Data();
 
     public static void main(String[] args) {
         try {
@@ -167,7 +170,7 @@ public class Frontend {
 
                 data.getResponses().put(response.getRequestId(), response);
 
-                log.info("Received {0}", response);
+                log.info("{0}: Received {1}", id, response);
             });
 
         requestSender.open();
@@ -194,7 +197,7 @@ public class Frontend {
 
             requestSender.send(message);
 
-            log.info("Sent {0}", message);
+            log.info("{0}: Sent {1}", id, message);
         }
     }
 
@@ -219,7 +222,7 @@ public class Frontend {
 
     private static void handleSendRequest(RoutingContext rc) {
         String json = rc.getBodyAsString();
-        String requestId = UUID.randomUUID().toString();
+        String requestId = id + "/" + requestSequence.incrementAndGet();
         Request request;
 
         try {
@@ -303,7 +306,7 @@ public class Frontend {
 
     private static void pruneStaleWorkers(Vertx vertx) {
         vertx.setPeriodic(5 * 1000, (timer) -> {
-                log.debug("Pruning stale workers");
+                log.debug("{0}: Pruning stale workers", id);
 
                 Map<String, WorkerUpdate> workers = data.getWorkers();
                 long now = System.currentTimeMillis();
@@ -314,7 +317,7 @@ public class Frontend {
 
                     if (now - update.getTimestamp() > 10 * 1000) {
                         workers.remove(workerId);
-                        log.info("Pruned {0}", workerId);
+                        log.info("{0}: Pruned {1}", id, workerId);
                     }
                 }
             });
