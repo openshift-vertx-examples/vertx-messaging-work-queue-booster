@@ -225,7 +225,8 @@ public class Frontend {
         try {
             request = mapper.readValue(json, Request.class);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            rc.fail(e);
+            return;
         }
 
         Map<String, Object> props = new HashMap<String, Object>();
@@ -244,10 +245,7 @@ public class Frontend {
 
         doSendRequests();
 
-        rc.response()
-            .setStatusCode(202)
-            .putHeader(CONTENT_TYPE, "text/plain; charset=utf-8")
-            .end(requestId);
+        rc.response().setStatusCode(202).end(requestId);
     }
 
     private static void handleReceiveResponse(RoutingContext rc) {
@@ -261,7 +259,7 @@ public class Frontend {
         Response response = data.getResponses().get(values.get(0));
 
         if (response == null) {
-            rc.response().setStatusCode(202).end();
+            rc.response().setStatusCode(404).end();
             return;
         }
 
