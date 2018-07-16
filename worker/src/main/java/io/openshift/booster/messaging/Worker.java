@@ -47,8 +47,8 @@ public class Worker extends AbstractVerticle {
   public void start(Future<Void> future) {
     ConfigRetriever.create(vertx).rxGetConfig()
       .doOnSuccess(json -> {
-        String amqpHost = json.getString("WORK_QUEUE_BROKER_AMQ_AMQP_PORT_5672_TCP_ADDR", "localhost");
-        int amqpPort = json.getInteger("WORK_QUEUE_BROKER_AMQ_AMQP_SERVICE_PORT", 5672);
+        String amqpHost = json.getString("MESSAGING_SERVICE_HOST", "localhost");
+        int amqpPort = json.getInteger("MESSAGING_SERVICE_PORT", 5672);
         String amqpUser = json.getString("MESSAGING_SERVICE_USER", "work-queue");
         String amqpPassword = json.getString("MESSAGING_SERVICE_PASSWORD", "work-queue");
 
