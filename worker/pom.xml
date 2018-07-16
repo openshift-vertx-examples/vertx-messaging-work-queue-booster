@@ -30,19 +30,10 @@
   <name>Vert.x - Messaging - Work Queue Booster - Worker</name>
 
   <properties>
-    <vertx.launcher>io.openshift.booster.messaging.Worker</vertx.launcher>
-    <vertx.health>/health</vertx.health>
+    <vertx.verticle>io.openshift.booster.messaging.Worker</vertx.verticle>
   </properties>
 
   <dependencies>
-    <dependency>
-      <groupId>io.vertx</groupId>
-      <artifactId>vertx-core</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>io.vertx</groupId>
-      <artifactId>vertx-web</artifactId>
-    </dependency>
     <dependency>
       <groupId>io.vertx</groupId>
       <artifactId>vertx-proton</artifactId>
@@ -67,4 +58,34 @@
       </plugin>
     </plugins>
   </build>
+
+  <profiles>
+    <profile>
+      <id>openshift</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>io.fabric8</groupId>
+            <artifactId>fabric8-maven-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>fmp</id>
+                <goals>
+                  <goal>resource</goal>
+                  <goal>build</goal>
+                </goals>
+              </execution>
+            </executions>
+            <configuration>
+              <enricher>
+                <excludes>
+                  <exclude>f8-maven-scm</exclude>
+                </excludes>
+              </enricher>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 </project>
