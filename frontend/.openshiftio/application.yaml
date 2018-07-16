@@ -91,7 +91,7 @@ objects:
   metadata:
     annotations:
       fabric8.io/iconUrl: img/icons/vertx.svg
-      fabric8.io/git-branch: add-templates
+      fabric8.io/git-branch: master
       prometheus.io/scrape: "true"
       prometheus.io/port: "9779"
     labels:
@@ -116,7 +116,7 @@ objects:
   metadata:
     annotations:
       fabric8.io/iconUrl: img/icons/vertx.svg
-      fabric8.io/git-branch: add-templates
+      fabric8.io/git-branch: master
       fabric8.io/metrics-path: dashboard/file/kubernetes-pods.json/?var-project=vertx-messaging-work-queue-frontend&var-version=1-SNAPSHOT
     labels:
       app: vertx-messaging-work-queue-frontend
@@ -139,7 +139,7 @@ objects:
       metadata:
         annotations:
           fabric8.io/iconUrl: img/icons/vertx.svg
-          fabric8.io/git-branch: add-templates
+          fabric8.io/git-branch: master
           fabric8.io/metrics-path: dashboard/file/kubernetes-pods.json/?var-project=vertx-messaging-work-queue-frontend&var-version=1-SNAPSHOT
         labels:
           app: vertx-messaging-work-queue-frontend
@@ -149,6 +149,10 @@ objects:
       spec:
         containers:
         - env:
+          - name: MESSAGING_SERVICE_HOST
+            value: work-queue-broker-amq-amqp
+          - name: MESSAGING_SERVICE_PORT
+            value: "5672"
           - name: KUBERNETES_NAMESPACE
             valueFrom:
               fieldRef:
