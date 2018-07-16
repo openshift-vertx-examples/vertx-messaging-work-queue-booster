@@ -1,0 +1,1 @@
+Booster to demonstrate how to dispatch tasks to a scalable set of workers using a message queue
