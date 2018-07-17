@@ -48,7 +48,7 @@ import static org.hamcrest.Matchers.notNullValue;
 @RunWith(ArquillianConditionalRunner.class)
 public class OpenShiftIT {
 
-  @RouteURL("vertx-messaging-work-queue-frontend")
+  @RouteURL("vertx-messaging-frontend")
   @AwaitRoute(path = "/api/health")
   private URL dashboardUrl;
 

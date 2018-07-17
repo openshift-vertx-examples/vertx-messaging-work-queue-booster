@@ -87,12 +87,12 @@
             <dependencies>
               <dependency>
                 <groupId>io.openshift.booster</groupId>
-                <artifactId>vertx-messaging-work-queue-frontend</artifactId>
+                <artifactId>vertx-messaging-frontend</artifactId>
                 <version>${project.version}</version>
               </dependency>
               <dependency>
                 <groupId>io.openshift.booster</groupId>
-                <artifactId>vertx-messaging-work-queue-worker</artifactId>
+                <artifactId>vertx-messaging-worker</artifactId>
                 <version>${project.version}</version>
               </dependency>
             </dependencies>

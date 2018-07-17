@@ -24,7 +24,7 @@
     <version>1-SNAPSHOT</version>
   </parent>
 
-  <artifactId>vertx-messaging-work-queue-frontend</artifactId>
+  <artifactId>vertx-messaging-frontend</artifactId>
   <packaging>jar</packaging>
 
   <name>Eclipse Vert.x - Messaging - Work Queue Booster - Frontend</name>
