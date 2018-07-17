@@ -27,7 +27,7 @@
   <artifactId>vertx-messaging-work-queue-frontend</artifactId>
   <packaging>jar</packaging>
 
-  <name>Vert.x - Messaging - Work Queue Booster - Frontend</name>
+  <name>Eclipse Vert.x - Messaging - Work Queue Booster - Frontend</name>
 
   <properties>
     <vertx.verticle>io.openshift.booster.messaging.Frontend</vertx.verticle>

@@ -29,7 +29,7 @@
   <version>1-SNAPSHOT</version>
   <packaging>pom</packaging>
 
-  <name>Vert.x - Messaging - Work Queue Booster - Parent</name>
+  <name>Eclipse Vert.x - Messaging - Work Queue Booster - Parent</name>
 
   <properties>
     <maven.compiler.source>1.8</maven.compiler.source>
