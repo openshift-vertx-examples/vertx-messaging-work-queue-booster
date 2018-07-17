@@ -98,7 +98,6 @@ objects:
       expose: "true"
       app: vertx-messaging-worker
       provider: fabric8
-      version: 1-SNAPSHOT
       group: io.openshift.booster
     name: vertx-messaging-worker
   spec:
@@ -120,7 +119,6 @@ objects:
     labels:
       app: vertx-messaging-worker
       provider: fabric8
-      version: 1-SNAPSHOT
       group: io.openshift.booster
     name: vertx-messaging-worker
   spec:
@@ -142,7 +140,6 @@ objects:
         labels:
           app: vertx-messaging-worker
           provider: fabric8
-          version: 1-SNAPSHOT
           group: io.openshift.booster
       spec:
         containers:
@@ -187,7 +184,6 @@ objects:
       expose: "true"
       app: vertx-messaging-worker
       provider: fabric8
-      version: 1-SNAPSHOT
       group: io.openshift.booster
     name: vertx-messaging-worker
   spec:
