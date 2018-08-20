@@ -1,313 +1,206 @@
 ---
-kind: Template
 apiVersion: v1
+kind: Template
+labels:
+  template: amq-broker-71-basic
+  xpaas: 1.4.12
+message: A new messaging service has been created in your project. It will handle the protocol(s) "${AMQ_PROTOCOL}". The username/password for accessing the service is ${AMQ_USER}/${AMQ_PASSWORD}.
 metadata:
   annotations:
-    description: Application template for JBoss A-MQ brokers. These can be deployed
-      as standalone or in a mesh. This template doesn't feature SSL support.
+    description: Application template for Red Hat AMQ brokers. These can be deployed as standalone or in a mesh. This template doesn't feature SSL support.
     iconClass: icon-amq
-    tags: messaging,amq,jboss
-    version: 1.4.12
-    openshift.io/display-name: Red Hat JBoss A-MQ 6.3 (Ephemeral, no SSL)
+    openshift.io/display-name: Red Hat AMQ Broker 7.1 (Ephemeral, no SSL)
     openshift.io/provider-display-name: Red Hat, Inc.
-  name: amq63-basic
-labels:
-  template: amq63-basic
-  xpaas: 1.4.12
-message: A new messaging service has been created in your project. It will handle
-  the protocol(s) "${MQ_PROTOCOL}". The username/password for accessing the service
-  is ${MQ_USERNAME}/${MQ_PASSWORD}.
-parameters:
-- displayName: Application Name
-  description: The name for the application.
-  name: APPLICATION_NAME
-  value: broker
-  required: true
-- displayName: A-MQ Protocols
-  description: 'Protocols to configure, separated by commas. Allowed values are: `openwire`,
-    `amqp`, `stomp` and `mqtt`.'
-  name: MQ_PROTOCOL
-  value: openwire
-  required: false
-- displayName: Queues
-  description: Queue names, separated by commas. These queues will be automatically
-    created when the broker starts. If left empty, queues will be still created dynamically.
-  name: MQ_QUEUES
-  value: ''
-  required: false
-- displayName: Topics
-  description: Topic names, separated by commas. These topics will be automatically
-    created when the broker starts. If left empty, topics will be still created dynamically.
-  name: MQ_TOPICS
-  value: ''
-  required: false
-- displayName: A-MQ Serializable Packages
-  description: List of packages that are allowed to be serialized for use in ObjectMessage,
-    separated by commas. If your app doesn't use ObjectMessages, leave this blank.
-    This is a security enforcement. For the rationale, see http://activemq.apache.org/objectmessage.html
-  name: MQ_SERIALIZABLE_PACKAGES
-  value: ''
-  required: false
-- displayName: A-MQ Username
-  description: User name for standard broker user. It is required for connecting to
-    the broker. If left empty, it will be generated.
-  name: MQ_USERNAME
-  from: user[a-zA-Z0-9]{3}
-  generate: expression
-  required: false
-- displayName: A-MQ Password
-  description: Password for standard broker user. It is required for connecting to
-    the broker. If left empty, it will be generated.
-  name: MQ_PASSWORD
-  from: "[a-zA-Z0-9]{8}"
-  generate: expression
-  required: false
-- displayName: A-MQ Mesh Discovery Type
-  description: The discovery agent type to use for discovering mesh endpoints.  'dns'
-    will use OpenShift's DNS service to resolve endpoints.  'kube' will use Kubernetes
-    REST API to resolve service endpoints.  If using 'kube' the service account for
-    the pod must have the 'view' role, which can be added via 'oc policy add-role-to-user
-    view system:serviceaccount:<namespace>:default' where <namespace> is the project
-    namespace.
-  name: AMQ_MESH_DISCOVERY_TYPE
-  value: dns
-  required: false
-- displayName: A-MQ Store Usage Limit
-  description: Sets the store disk limit usage in activemq.xml. If the value set is
-    greater than the disk size, it will be resized to the available disk space.
-  name: AMQ_STORAGE_USAGE_LIMIT
-  value: 100 gb
-  required: false
-- displayName: Queue Memory Limit
-  description: The queue memory limit (default is 1mb)
-  name: AMQ_QUEUE_MEMORY_LIMIT
-  value: ''
-  required: false
-- displayName: ImageStream Namespace
-  description: Namespace in which the ImageStreams for Red Hat Middleware images are
-    installed. These ImageStreams are normally installed in the openshift namespace.
-    You should only need to modify this if you've installed the ImageStreams in a
-    different namespace/project.
-  name: IMAGE_STREAM_NAMESPACE
-  value: openshift
-  required: true
+    tags: messaging,amq,jboss
+    template.openshift.io/documentation-url: 'https://access.redhat.com/documentation/en/red-hat-amq/'
+    template.openshift.io/long-description: >-
+      This template defines resources needed to develop Red Hat AMQ Broker 7.1 based application, including a deployment configuration, using ephemeral (temporary) storage. These can be deployed as standalone or in a mesh.
+    template.openshift.io/support-url: 'https://access.redhat.com'
+    version: 1.4.12
+  name: amq-broker-71-basic
 objects:
-- kind: Service
-  apiVersion: v1
+- apiVersion: v1
+  kind: Service
+  metadata:
+    annotations:
+      description: The broker's console and Jolokia port.
+    labels:
+      application: ${APPLICATION_NAME}
+    name: ${APPLICATION_NAME}-amq-jolokia
+  spec:
+    ports:
+    - port: 8161
+      targetPort: 8161
+    selector:
+      deploymentConfig: ${APPLICATION_NAME}-amq
+- apiVersion: v1
+  kind: Service
+  metadata:
+    annotations:
+      description: The broker's AMQP port.
+    labels:
+      application: ${APPLICATION_NAME}
+    name: ${APPLICATION_NAME}-amq-amqp
   spec:
     ports:
     - port: 5672
       targetPort: 5672
     selector:
-      deploymentConfig: "${APPLICATION_NAME}-amq"
+      deploymentConfig: ${APPLICATION_NAME}-amq
+- apiVersion: v1
+  kind: Service
   metadata:
-    name: "${APPLICATION_NAME}-amq-amqp"
-    labels:
-      application: "${APPLICATION_NAME}"
     annotations:
-      description: The broker's AMQP port.
-- kind: Service
-  apiVersion: v1
+      description: The broker's MQTT port.
+    labels:
+      application: ${APPLICATION_NAME}
+    name: ${APPLICATION_NAME}-amq-mqtt
   spec:
     ports:
     - port: 1883
       targetPort: 1883
     selector:
-      deploymentConfig: "${APPLICATION_NAME}-amq"
+      deploymentConfig: ${APPLICATION_NAME}-amq
+- apiVersion: v1
+  kind: Service
   metadata:
-    name: "${APPLICATION_NAME}-amq-mqtt"
-    labels:
-      application: "${APPLICATION_NAME}"
     annotations:
-      description: The broker's MQTT port.
-- kind: Service
-  apiVersion: v1
+      description: The broker's STOMP port.
+    labels:
+      application: ${APPLICATION_NAME}
+    name: ${APPLICATION_NAME}-amq-stomp
   spec:
     ports:
     - port: 61613
       targetPort: 61613
     selector:
-      deploymentConfig: "${APPLICATION_NAME}-amq"
+      deploymentConfig: ${APPLICATION_NAME}-amq
+- apiVersion: v1
+  kind: Service
   metadata:
-    name: "${APPLICATION_NAME}-amq-stomp"
-    labels:
-      application: "${APPLICATION_NAME}"
-    annotations:
-      description: The broker's STOMP port.
-- kind: Service
-  apiVersion: v1
-  spec:
-    ports:
-    - port: 61616
-      targetPort: 61616
-    selector:
-      deploymentConfig: "${APPLICATION_NAME}-amq"
-  metadata:
-    name: "${APPLICATION_NAME}-amq-tcp"
-    labels:
-      application: "${APPLICATION_NAME}"
     annotations:
       description: The broker's OpenWire port.
       service.alpha.openshift.io/dependencies: '[{"name": "${APPLICATION_NAME}-amq-amqp",
         "kind": "Service"},{"name": "${APPLICATION_NAME}-amq-mqtt", "kind": "Service"},{"name":
         "${APPLICATION_NAME}-amq-stomp", "kind": "Service"}]'
-- kind: Service
-  apiVersion: v1
+    labels:
+      application: ${APPLICATION_NAME}
+    name: ${APPLICATION_NAME}-amq-tcp
   spec:
-    clusterIP: None
     ports:
-    - name: mesh
-      port: 61616
+    - port: 61616
+      targetPort: 61616
     selector:
-      deploymentConfig: "${APPLICATION_NAME}-amq"
+      deploymentConfig: ${APPLICATION_NAME}-amq
+- apiVersion: v1
+  kind: DeploymentConfig
   metadata:
-    name: "${APPLICATION_NAME}-amq-mesh"
     labels:
-      application: "${APPLICATION_NAME}"
-    annotations:
-      service.alpha.kubernetes.io/tolerate-unready-endpoints: 'true'
-      description: Supports node discovery for mesh formation.
-- kind: DeploymentConfig
-  apiVersion: v1
-  metadata:
-    name: "${APPLICATION_NAME}-amq"
-    labels:
-      application: "${APPLICATION_NAME}"
+      application: ${APPLICATION_NAME}
+    name: ${APPLICATION_NAME}-amq
   spec:
-    strategy:
-      type: Rolling
-      rollingParams:
-        maxSurge: 0
-    triggers:
-    - type: ImageChange
-      imageChangeParams:
-        automatic: true
-        containerNames:
-        - "${APPLICATION_NAME}-amq"
-        from:
-          kind: ImageStreamTag
-          namespace: "${IMAGE_STREAM_NAMESPACE}"
-          name: jboss-amq-63:1.3
-    - type: ConfigChange
     replicas: 1
     selector:
-      deploymentConfig: "${APPLICATION_NAME}-amq"
+      deploymentConfig: ${APPLICATION_NAME}-amq
+    strategy:
+      rollingParams:
+        maxSurge: 0
+      type: Rolling
     template:
       metadata:
-        name: "${APPLICATION_NAME}-amq"
         labels:
-          deploymentConfig: "${APPLICATION_NAME}-amq"
-          application: "${APPLICATION_NAME}"
+          application: ${APPLICATION_NAME}
+          deploymentConfig: ${APPLICATION_NAME}-amq
+        name: ${APPLICATION_NAME}-amq
       spec:
-        terminationGracePeriodSeconds: 60
         containers:
-        - name: "${APPLICATION_NAME}-amq"
-          image: jboss-amq-63
-          imagePullPolicy: Always
-          #          TODO Probe keeps failing on OpenShift
-          #          readinessProbe:
-          #            exec:
-          #              command:
-          #              - "/bin/bash"
-          #              - "-c"
-          #              - "/opt/amq/bin/readinessProbe.sh"
-          ports:
-          - name: jolokia
-            containerPort: 8778
-            protocol: TCP
-          - name: amqp
-            containerPort: 5672
-            protocol: TCP
-          - name: mqtt
-            containerPort: 1883
-            protocol: TCP
-          - name: stomp
-            containerPort: 61613
-            protocol: TCP
-          - name: tcp
-            containerPort: 61616
-            protocol: TCP
-          env:
+        - env:
           - name: AMQ_USER
-            value: "${MQ_USERNAME}"
+            value: ${AMQ_USER}
           - name: AMQ_PASSWORD
-            value: "${MQ_PASSWORD}"
+            value: ${AMQ_PASSWORD}
+          - name: AMQ_ROLE
+            value: ${AMQ_ROLE}
+          - name: AMQ_NAME
+            value: ${AMQ_NAME}
           - name: AMQ_TRANSPORTS
-            value: "${MQ_PROTOCOL}"
+            value: ${AMQ_PROTOCOL}
           - name: AMQ_QUEUES
-            value: "${MQ_QUEUES}"
-          - name: AMQ_TOPICS
-            value: "${MQ_TOPICS}"
-          - name: MQ_SERIALIZABLE_PACKAGES
-            value: "${MQ_SERIALIZABLE_PACKAGES}"
-          - name: AMQ_MESH_DISCOVERY_TYPE
-            value: "${AMQ_MESH_DISCOVERY_TYPE}"
-          - name: AMQ_MESH_SERVICE_NAME
-            value: "${APPLICATION_NAME}-amq-mesh"
-          - name: AMQ_MESH_SERVICE_NAMESPACE
-            valueFrom:
-              fieldRef:
-                fieldPath: metadata.namespace
-          - name: AMQ_STORAGE_USAGE_LIMIT
-            value: "${AMQ_STORAGE_USAGE_LIMIT}"
-          - name: AMQ_QUEUE_MEMORY_LIMIT
-            value: "${AMQ_QUEUE_MEMORY_LIMIT}"
+            value: ${AMQ_QUEUES}
+          - name: AMQ_ADDRESSES
+            value: ${AMQ_ADDRESSES}
+          - name: AMQ_GLOBAL_MAX_SIZE
+            value: ${AMQ_GLOBAL_MAX_SIZE}
+          - name: AMQ_ALLOW_ANONYMOUS
+            value: ${AMQ_ALLOW_ANONYMOUS}
+          image: amq-broker-71-openshift
+          imagePullPolicy: Always
+          readinessProbe:
+            exec:
+              command:
+              - "/bin/bash"
+              - "-c"
+              - "/opt/amq/bin/readinessProbe.sh"
+          name: ${APPLICATION_NAME}-amq
+          ports:
+          - containerPort: 8161
+            name: console-jolokia
+            protocol: TCP
+          - containerPort: 5672
+            name: amqp
+            protocol: TCP
+          - containerPort: 1883
+            name: mqtt
+            protocol: TCP
+          - containerPort: 61613
+            name: stomp
+            protocol: TCP
+          - containerPort: 61616
+            name: artemis
+            protocol: TCP
+        terminationGracePeriodSeconds: 60
+    triggers:
+    - imageChangeParams:
+        automatic: true
+        containerNames:
+        - ${APPLICATION_NAME}-amq
+        from:
+          kind: ImageStreamTag
+          name: amq-broker-71-openshift:1.0
+          namespace: ${IMAGE_STREAM_NAMESPACE}
+      type: ImageChange
+    - type: ConfigChange
+- apiVersion: v1
+  kind: Route
+  metadata:
+    labels:
+      application: ${APPLICATION_NAME}
+    name: console
+  spec:
+    to:
+      kind: Service
+      name: ${APPLICATION_NAME}-amq-jolokia
 - kind: ImageStream
   apiVersion: v1
   metadata:
-    name: jboss-amq-63
+    name: amq-broker-71-openshift
     annotations:
-      openshift.io/display-name: Red Hat JBoss A-MQ 6.3
+      openshift.io/display-name: Red Hat AMQ Broker 7.1
       openshift.io/provider-display-name: Red Hat, Inc.
-      version: 1.4.12
-  labels:
-    xpaas: 1.4.12
   spec:
+    lookupPolicy:
+      local: true
     tags:
     - name: '1.0'
       annotations:
-        description: JBoss A-MQ 6.3 broker image.
-        iconClass: icon-amq
-        tags: messaging,amq,jboss,hidden
-        supports: amq:6.3,messaging
+        description: Red Hat AMQ Broker 7.1 image.
+        iconClass: icon-jboss
+        tags: messaging,amq,jboss,xpaas
+        supports: amq:7.1,messaging:1.0
         version: '1.0'
-        openshift.io/display-name: Red Hat JBoss A-MQ 6.3
       from:
         kind: DockerImage
-        name: registry.access.redhat.com/jboss-amq-6/amq63-openshift:1.0
-    - name: '1.1'
-      annotations:
-        description: JBoss A-MQ 6.3 broker image.
-        iconClass: icon-amq
-        tags: messaging,amq,jboss,hidden
-        supports: amq:6.3,messaging
-        version: '1.1'
-        openshift.io/display-name: Red Hat JBoss A-MQ 6.3
-      from:
-        kind: DockerImage
-        name: registry.access.redhat.com/jboss-amq-6/amq63-openshift:1.1
-    - name: '1.2'
-      annotations:
-        description: JBoss A-MQ 6.3 broker image.
-        iconClass: icon-amq
-        tags: messaging,amq,jboss,hidden
-        supports: amq:6.3,messaging
-        version: '1.2'
-        openshift.io/display-name: Red Hat JBoss A-MQ 6.3
-      from:
-        kind: DockerImage
-        name: registry.access.redhat.com/jboss-amq-6/amq63-openshift:1.2
-    - name: '1.3'
-      annotations:
-        description: JBoss A-MQ 6.3 broker image.
-        iconClass: icon-amq
-        tags: messaging,amq,jboss,hidden
-        supports: amq:6.3,messaging
-        version: '1.3'
-        openshift.io/display-name: Red Hat JBoss A-MQ 6.3
-      from:
-        kind: DockerImage
-        name: registry.access.redhat.com/jboss-amq-6/amq63-openshift:1.3
+        name: registry.access.redhat.com/amq-broker-7-tech-preview/amq-broker-71-openshift:1.0
 - apiVersion: v1
   kind: ConfigMap
   metadata:
@@ -315,3 +208,50 @@ objects:
   data:
     MESSAGING_SERVICE_HOST: work-queue-broker-amq-amqp
     MESSAGING_SERVICE_PORT: "5672"
+parameters:
+- description: The name for the application.
+  displayName: Application Name
+  name: APPLICATION_NAME
+  required: true
+  value: broker
+- description: 'Protocols to configure, separated by commas. Allowed values are: `openwire`, `amqp`, `stomp`, `mqtt` and `hornetq`.'
+  displayName: AMQ Protocols
+  name: AMQ_PROTOCOL
+  value: openwire,amqp,stomp,mqtt,hornetq
+- description: Queue names, separated by commas. These queues will be automatically created when the broker starts. If left empty, queues will be still created dynamically.
+  displayName: Queues
+  name: AMQ_QUEUES
+- description: Address names, separated by commas. These addresses will be automatically created when the broker starts. If left empty, addresses will be still created dynamically.
+  displayName: Addresses
+  name: AMQ_ADDRESSES
+- description: User name for standard broker user. It is required for connecting to the broker. If left empty, it will be generated.
+  displayName: AMQ Username
+  from: user[a-zA-Z0-9]{3}
+  generate: expression
+  name: AMQ_USER
+- description: Password for standard broker user. It is required for connecting to the broker. If left empty, it will be generated.
+  displayName: AMQ Password
+  from: '[a-zA-Z0-9]{8}'
+  generate: expression
+  name: AMQ_PASSWORD
+- description: User role for standard broker user.
+  displayName: AMQ Role
+  name: AMQ_ROLE
+  value: admin
+- description: The name of the broker
+  displayName: AMQ Name
+  name: AMQ_NAME
+  value: broker
+- description: "Maximum amount of memory which message data may consume (Default: Undefined, half of the system's memory)."
+  displayName: AMQ Global Max Size
+  name: AMQ_GLOBAL_MAX_SIZE
+  value: 100 gb
+- description: "Determines whether or not the broker will allow anonymous access."
+  displayName: AMQ Allow Anonymous
+  name: AMQ_ALLOW_ANONYMOUS
+- description: Namespace in which the ImageStreams for Red Hat Middleware images are installed. These ImageStreams are normally installed in the openshift namespace. You should only need to modify this if you've installed the ImageStreams in a different namespace/project.
+  displayName: ImageStream Namespace
+  name: IMAGE_STREAM_NAMESPACE
+  required: true
+  value: openshift
+

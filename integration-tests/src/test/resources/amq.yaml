@@ -2,26 +2,24 @@
 kind: ImageStream
 apiVersion: v1
 metadata:
-  name: jboss-amq-63
+  name: amq-broker-71-openshift
   annotations:
-    openshift.io/display-name: Red Hat JBoss A-MQ 6.3
+    openshift.io/display-name: Red Hat AMQ Broker 7.1
     openshift.io/provider-display-name: Red Hat, Inc.
-    version: 1.4.12
-labels:
-  xpaas: 1.4.12
 spec:
+  lookupPolicy:
+    local: true
   tags:
-  - name: '1.3'
+  - name: '1.0'
     annotations:
-      description: JBoss A-MQ 6.3 broker image.
-      iconClass: icon-amq
-      tags: messaging,amq,jboss,hidden
-      supports: amq:6.3,messaging
-      version: '1.3'
-      openshift.io/display-name: Red Hat JBoss A-MQ 6.3
+      description: Red Hat AMQ Broker 7.1 image.
+      iconClass: icon-jboss
+      tags: messaging,amq,jboss,xpaas
+      supports: amq:7.1,messaging:1.0
+      version: '1.0'
     from:
       kind: DockerImage
-      name: registry.access.redhat.com/jboss-amq-6/amq63-openshift:1.3
+      name: registry.access.redhat.com/amq-broker-7-tech-preview/amq-broker-71-openshift:1.0
 ---
 kind: Service
 apiVersion: v1
@@ -37,6 +35,39 @@ metadata:
     application: "work-queue-broker"
   annotations:
     description: The broker's AMQP port.
+---
+kind: Service
+apiVersion: v1
+spec:
+  ports:
+  - port: 61613
+    targetPort: 61613
+  selector:
+    deploymentConfig: "work-queue-broker-amq"
+metadata:
+  name: "work-queue-broker-amq-stomp"
+  labels:
+    application: "work-queue-broker"
+  annotations:
+    description: The broker's STOMP port.
+---
+kind: Service
+apiVersion: v1
+spec:
+  ports:
+  - port: 61616
+    targetPort: 61616
+  selector:
+    deploymentConfig: "work-queue-broker-amq"
+metadata:
+  name: "work-queue-broker-amq-tcp"
+  labels:
+    application: "work-queue-broker"
+  annotations:
+    description: The broker's OpenWire port.
+    service.alpha.openshift.io/dependencies: '[{"name": "work-queue-broker-amq-amqp",
+      "kind": "Service"},{"name": "work-queue-broker-amq-mqtt", "kind": "Service"},{"name":
+      "work-queue-broker-amq-stomp", "kind": "Service"}]'
 ---
 kind: Service
 apiVersion: v1
@@ -74,7 +105,7 @@ spec:
       - "work-queue-broker-amq"
       from:
         kind: ImageStreamTag
-        name: jboss-amq-63:1.3
+        name: amq-broker-71-openshift:1.0
   - type: ConfigChange
   replicas: 1
   selector:
@@ -89,18 +120,29 @@ spec:
       terminationGracePeriodSeconds: 60
       containers:
       - name: "work-queue-broker-amq"
-        image: jboss-amq-63
+        image: amq-broker-71-openshift
         imagePullPolicy: Always
-        # TODO Probe keeps failing on OpenShift
-        # readinessProbe:
-        #   exec:
-        #     command:
-        #     - "/bin/bash"
-        #     - "-c"
-        #     - "/opt/amq/bin/readinessProbe.sh"
+        readinessProbe:
+          exec:
+            command:
+            - "/bin/bash"
+            - "-c"
+            - "/opt/amq/bin/readinessProbe.sh"
         ports:
+        - name: jolokia
+          containerPort: 8778
+          protocol: TCP
         - name: amqp
           containerPort: 5672
+          protocol: TCP
+        - name: mqtt
+          containerPort: 1883
+          protocol: TCP
+        - name: stomp
+          containerPort: 61613
+          protocol: TCP
+        - name: tcp
+          containerPort: 61616
           protocol: TCP
         env:
         - name: AMQ_USER
@@ -111,10 +153,8 @@ spec:
           value: "amqp"
         - name: AMQ_QUEUES
           value: "work-queue/requests,work-queue/responses"
-        - name: AMQ_TOPICS
+        - name: AMQ_ADDRESSES
           value: "work-queue/worker-updates"
-        - name: MQ_SERIALIZABLE_PACKAGES
-          value: ""
         - name: AMQ_MESH_DISCOVERY_TYPE
           value: "dns"
         - name: AMQ_MESH_SERVICE_NAME

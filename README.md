@@ -22,14 +22,14 @@ Run the following commands to configure and deploy the applications.
 ```bash
 oc apply -f ./service.yaml
 
-oc new-app --template=amq63-basic \
+oc new-app --template=amq-broker-71-basic \
   -p APPLICATION_NAME=work-queue-broker \
   -p IMAGE_STREAM_NAMESPACE=$(oc project -q) \
-  -p MQ_PROTOCOL=amqp \
-  -p MQ_QUEUES=work-queue/requests,work-queue/responses \
-  -p MQ_TOPICS=work-queue/worker-updates \
-  -p MQ_USERNAME=work-queue \
-  -p MQ_PASSWORD=work-queue
+  -p AMQ_PROTOCOL=amqp \
+  -p AMQ_QUEUES=work-queue/requests,work-queue/responses \
+  -p AMQ_ADDRESSES=work-queue/worker-updates \
+  -p AMQ_USER=work-queue \
+  -p AMQ_PASSWORD=work-queue
   
 oc apply -f ./frontend/.openshiftio/application.yaml
 
@@ -51,14 +51,14 @@ oc new-app --template=vertx-messaging-worker \
 ```bash
 oc apply -f ./service.yaml
 
-oc new-app --template=amq63-basic \
+oc new-app --template=amq-broker-71-basic \
   -p APPLICATION_NAME=work-queue-broker \
   -p IMAGE_STREAM_NAMESPACE=$(oc project -q) \
-  -p MQ_PROTOCOL=amqp \
-  -p MQ_QUEUES=work-queue/requests,work-queue/responses \
-  -p MQ_TOPICS=work-queue/worker-updates \
-  -p MQ_USERNAME=work-queue \
-  -p MQ_PASSWORD=work-queue
+  -p AMQ_PROTOCOL=amqp \
+  -p AMQ_QUEUES=work-queue/requests,work-queue/responses \
+  -p AMQ_ADDRESSES=work-queue/worker-updates \
+  -p AMQ_USER=work-queue \
+  -p AMQ_PASSWORD=work-queue 
   
 mvn fabric8:deploy -Popenshift  
 ```

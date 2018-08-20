@@ -102,7 +102,7 @@
             <artifactId>maven-failsafe-plugin</artifactId>
             <configuration>
               <systemPropertyVariables>
-                <env.dependencies>file://${basedir}/target/test-classes/amq63.yaml</env.dependencies>
+                <env.dependencies>file://${basedir}/target/test-classes/amq.yaml</env.dependencies>
               </systemPropertyVariables>
             </configuration>
           </plugin>
