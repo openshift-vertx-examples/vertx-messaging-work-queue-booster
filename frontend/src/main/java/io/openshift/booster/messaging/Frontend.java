@@ -62,7 +62,7 @@ public class Frontend extends AbstractVerticle {
     router.post("/api/send-request").handler(this::handleSendRequest);
     router.get("/api/receive-response").handler(this::handleReceiveResponse);
     router.get("/api/data").handler(this::handleGetData);
-    router.get("/api/health").handler(rc -> rc.response().end("OK"));
+    router.get("/health").handler(rc -> rc.response().end("OK"));
     router.get("/*").handler(StaticHandler.create());
 
     ConfigRetriever.create(vertx).rxGetConfig()

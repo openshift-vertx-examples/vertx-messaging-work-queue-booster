@@ -31,6 +31,7 @@
 
   <properties>
     <vertx.verticle>io.openshift.booster.messaging.Worker</vertx.verticle>
+    <vertx.health>/</vertx.health>
   </properties>
 
   <dependencies>
@@ -82,6 +83,11 @@
                   <exclude>f8-maven-scm</exclude>
                 </excludes>
               </enricher>
+              <config>
+                <vertx-health-check>
+                  <path>/</path>
+                </vertx-health-check>
+              </config>
             </configuration>
           </plugin>
         </plugins>

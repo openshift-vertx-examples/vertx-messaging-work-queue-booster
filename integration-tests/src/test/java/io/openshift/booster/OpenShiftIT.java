@@ -49,7 +49,7 @@ import static org.hamcrest.Matchers.notNullValue;
 public class OpenShiftIT {
 
   @RouteURL("vertx-messaging-frontend")
-  @AwaitRoute(path = "/api/health")
+  @AwaitRoute(path = "/health")
   private URL dashboardUrl;
 
   private URL dataUrl;

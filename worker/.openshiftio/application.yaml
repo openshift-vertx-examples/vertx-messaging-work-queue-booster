@@ -136,6 +136,18 @@ objects:
             valueFrom:
               fieldRef:
                 fieldPath: metadata.namespace
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 180
           image: vertx-messaging-worker:latest
           imagePullPolicy: IfNotPresent
           name: vertx

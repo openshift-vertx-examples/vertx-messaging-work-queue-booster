@@ -66,7 +66,8 @@ public class Worker extends AbstractVerticle {
             future.complete();
           }
         });
-      }).subscribe();
+      }).flatMap(x -> vertx.createHttpServer().requestHandler(req -> req.response().end("Ready")).rxListen(8080))
+      .subscribe();
   }
 
   private void receiveRequests(ProtonConnection conn) {

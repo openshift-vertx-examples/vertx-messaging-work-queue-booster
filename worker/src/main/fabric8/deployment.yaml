@@ -7,3 +7,15 @@ spec:
           value: work-queue-broker-amq-amqp
         - name: MESSAGING_SERVICE_PORT
           value: 5672
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 180
