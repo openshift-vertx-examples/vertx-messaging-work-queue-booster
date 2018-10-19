@@ -16,36 +16,25 @@
 
 package io.openshift.booster;
 
-import java.net.MalformedURLException;
-import java.net.URL;
-
 import io.restassured.path.json.JsonPath;
 import io.restassured.response.Response;
 import org.arquillian.cube.openshift.impl.enricher.AwaitRoute;
 import org.arquillian.cube.openshift.impl.enricher.RouteURL;
-import org.arquillian.cube.openshift.impl.requirement.RequiresOpenshift;
-import org.arquillian.cube.requirement.ArquillianConditionalRunner;
+import org.jboss.arquillian.junit.Arquillian;
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-import static io.restassured.RestAssured.given;
-import static io.restassured.RestAssured.when;
-import static io.restassured.RestAssured.withArgs;
+import java.net.MalformedURLException;
+import java.net.URL;
+
+import static io.restassured.RestAssured.*;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.hasItem;
-import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.isEmptyString;
-import static org.hamcrest.Matchers.not;
-import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.*;
 
-@Category(RequiresOpenshift.class)
-@RequiresOpenshift
-@RunWith(ArquillianConditionalRunner.class)
+@RunWith(Arquillian.class)
 public class OpenShiftIT {
 
   @RouteURL("vertx-messaging-frontend")

@@ -17,31 +17,24 @@
     <dependency>
       <groupId>io.rest-assured</groupId>
       <artifactId>rest-assured</artifactId>
-      <version>3.1.0</version>
+      <version>3.1.1</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.assertj</groupId>
       <artifactId>assertj-core</artifactId>
-      <version>3.10.0</version>
+      <version>3.11.1</version>
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>org.jboss.arquillian.junit</groupId>
-      <artifactId>arquillian-junit-standalone</artifactId>
-      <scope>test</scope>
-      <version>1.4.0.Final</version>
-    </dependency>
-    <dependency>
-      <groupId>org.arquillian.cube</groupId>
-      <artifactId>arquillian-cube-openshift</artifactId>
-      <version>1.16.0</version>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>4.12</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.arquillian.cube</groupId>
-      <artifactId>arquillian-cube-requirement</artifactId>
-      <version>1.16.0</version>
+      <artifactId>arquillian-cube-openshift-starter</artifactId>
       <scope>test</scope>
     </dependency>
   </dependencies>
