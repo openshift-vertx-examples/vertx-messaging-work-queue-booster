@@ -44,6 +44,7 @@
       <plugin>
         <groupId>io.fabric8</groupId>
         <artifactId>fabric8-maven-plugin</artifactId>
+        <version>${fabric8-maven-plugin.version}</version>
         <configuration>
           <skip>true</skip>
         </configuration>
@@ -66,6 +67,7 @@
           <plugin>
             <groupId>io.fabric8</groupId>
             <artifactId>fabric8-maven-plugin</artifactId>
+            <version>${fabric8-maven-plugin.version}</version>
             <executions>
               <execution>
                 <goals>
@@ -93,6 +95,7 @@
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-failsafe-plugin</artifactId>
+            <version>2.22.1</version>
             <configuration>
               <systemPropertyVariables>
                 <env.dependencies>file://${basedir}/target/test-classes/amq.yaml</env.dependencies>
