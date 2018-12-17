@@ -29,7 +29,6 @@ import io.vertx.proton.ProtonSender;
 import io.vertx.reactivex.CompletableHelper;
 import io.vertx.reactivex.config.ConfigRetriever;
 import io.vertx.reactivex.core.AbstractVerticle;
-import io.vertx.reactivex.core.impl.AsyncResultCompletable;
 import io.vertx.reactivex.ext.web.Router;
 import io.vertx.reactivex.ext.web.RoutingContext;
 import io.vertx.reactivex.ext.web.handler.BodyHandler;
@@ -93,11 +92,11 @@ public class Frontend extends AbstractVerticle {
           }
         });
 
-        Completable brokerConnected = new AsyncResultCompletable(connected::setHandler);
+        Completable brokerConnected = CompletableHelper.toCompletable(connected::setHandler);
         Completable serverStarted = vertx.createHttpServer()
-          .requestHandler(router::accept)
+          .requestHandler(router)
           .rxListen(httpPort, httpHost)
-          .toCompletable();
+          .ignoreElement();
 
         return brokerConnected.andThen(serverStarted);
       })

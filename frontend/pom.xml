@@ -87,11 +87,6 @@
                   <exclude>f8-maven-scm</exclude>
                 </excludes>
               </enricher>
-              <config>
-                <vertx-health-check>
-                  <path>/health</path>
-                </vertx-health-check>
-              </config>
             </configuration>
           </plugin>
         </plugins>
