@@ -19,7 +19,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>io.openshift.booster</groupId>
   <artifactId>vertx-messaging-work-queue-parent</artifactId>
-  <version>1</version>
+  <version>2-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>Eclipse Vert.x - Messaging - Work Queue Booster - Parent</name>
