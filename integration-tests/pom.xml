@@ -95,7 +95,7 @@
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-failsafe-plugin</artifactId>
-            <version>2.22.1</version>
+            <version>2.22.2</version>
             <configuration>
               <systemPropertyVariables>
                 <env.dependencies>file://${basedir}/target/test-classes/amq.yaml</env.dependencies>
